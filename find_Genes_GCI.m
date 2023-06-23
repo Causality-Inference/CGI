@@ -104,7 +104,7 @@ for k = 1:length(idz1)
     end
 end
 for k = 1:length(idz2)
-    if KCIT(data(:,tempZ(idz2(k),1)), tempRes(:,idz2(k)),[],[])
+    if KCIT(data(:,tempZ(idz2(k),2)), tempRes(:,idz2(k)),[],[])
         found_Genes_1st = [found_Genes_1st,idz2(k)];
     end
 end
