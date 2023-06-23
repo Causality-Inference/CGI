@@ -1,13 +1,8 @@
 clear;
 clc;
-tic
+addpath(genpath('./algo'))
 % load normalized_Prostate.mat
-% load normalized_Leukemia.mat
-% load normalized_Lung.mat 
-% load normalized_Colon.mat
-% load normalized_Leukemia_ATL.mat
-% load normalized_Liver.mat
-load normalized_Colorectal.mat
+load normalized_Leukemia.mat
 data = d;
 n = size(data,2)-1;
 x = data(:,n+1);
@@ -18,6 +13,8 @@ nontry2 = []; %non-adjacent
 cov='covSEiso';
 Ncg=100;
 hyp=[4;log(4);log(sqrt(0.01))];
+tempRes = []; % save res x-Z
+tempZ = []; % save Z
 %---------------------------- 0-order CI tests-----------------------------
 fprintf('--------------- 0-order CI tests \n');
 for i = 1:n
@@ -48,12 +45,13 @@ for j = 1: len1
                     res2 = yf-y;
                     ind2 = KCIT(res1, res2,[],[]);
                     if ind2
+                        tempRes = [tempRes,res1];
+                        tempZ = [tempZ;idx1(k),0];
                         non = [non,idx1(j)];
                         break;
                     end
                 catch
                     non = [non,idx1(j)];
-%                     nontry1 = [nontry1,idx1(j)];
                     break;
                 end
             end
@@ -81,23 +79,38 @@ for p = 1: len2
                     res2 = yf-y;
                     ind2 = KCIT(res1, res2,[],[]);
                     if ind2
+                        tempRes = [tempRes,res1];
+                        tempZ = [tempZ;idx2(M(k,:))];
                         non = [non,j];
                     end
                 catch
                     non = [non,j];
-%                     nontry2 = [nontry2,j];
                     break;
                 end
             end
         end
     end
 end
-%--------------- find genes by regression ---------------------------------
-fprintf('--------------- find genes by regression \n');
+%--------------- find genes by regression 1st ---------------------------------
+fprintf('--------------- find genes by regression 1st \n');
 pa = setdiff(1:n,non);
-% save('Lung_pa.mat','pa') % save
 l = length(pa);
-found_Genes = [];
+found_Genes_1st = [];
+[~,idz1] = intersect(tempZ(:,1),pa);
+[~,idz2] = intersect(tempZ(:,2),pa);
+for k = 1:length(idz1)
+    if KCIT(data(:,tempZ(idz1(k),1)), tempRes(:,idz1(k)),[],[])
+        found_Genes_1st = [found_Genes_1st,idz1(k)];
+    end
+end
+for k = 1:length(idz2)
+    if KCIT(data(:,tempZ(idz2(k),1)), tempRes(:,idz2(k)),[],[])
+        found_Genes_1st = [found_Genes_1st,idz2(k)];
+    end
+end
+%--------------- find genes by regression 2nd--------------------------------
+fprintf('--------------- find genes by regression 2nd \n');
+found_Genes_2nd = [];
 M = nchoosek(1:l,2);
 lenM = size(M,1);
 for p = 1: lenM
@@ -109,15 +122,14 @@ for p = 1: lenM
         res1 = xf-x;
         ind3 = KCIT(res1, z(:,1),[],[]);
         ind4 = KCIT(res1, z(:,2),[],[]);
-        consetID = [j,ind3,ind4]
         if ind3 
-            found_Genes = [found_Genes,j(1)];
+            found_Genes_2nd = [found_Genes_2nd,j(1)];
         end
-        if ind4
-            found_Genes = [found_Genes,j(2)];
+        if ind3
+            found_Genes_2nd = [found_Genes_2nd,j(2)];
         end
     catch
     end
 end
-found_Genes = unique(found_Genes)
-toc
+%--------------- results--------------------------------
+found_Genes = unique([found_Genes_1st,found_Genes_2nd])
